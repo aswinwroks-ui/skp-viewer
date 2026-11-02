@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aswin | SketchUp Viewer</title>
+  <link rel="icon" type="image/png" href="https://cdn.jsdelivr.net/gh/iamahsanmehmood/openskp@c0bbeaa62191d776ea25e979555c5d6c464d54fa/examples/web-viewer/assets/favicon.png">
+  <link rel="stylesheet" href="style.css">
+  
+  <!-- ESM Import Maps to resolve Three.js and parser dependencies -->
+  <script type="importmap">
+    {
+      "imports": {
+        "fflate": "https://cdn.jsdelivr.net/npm/fflate@0.8.0/+esm",
+        "earcut": "https://cdn.jsdelivr.net/npm/earcut@3.0.0/+esm",
+        "flatbuffers": "https://cdn.jsdelivr.net/npm/flatbuffers@25.9.23/+esm",
+        "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+        "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+      }
+    }
+  </script>
+</head>
+<body>
+  <!-- Three.js Canvas Container -->
+  <div id="canvas-container"></div>
+
+  <!-- Main Floating HUD Overlay -->
+  <div id="ui-container">
+    
+    <!-- Top Navbar -->
+    <header class="panel main-header">
+      <div class="logo">
+        <img src="https://cdn.jsdelivr.net/gh/iamahsanmehmood/openskp@c0bbeaa62191d776ea25e979555c5d6c464d54fa/examples/web-viewer/assets/logo-white.png" width="24" height="24" alt="" class="logo-icon">
+        <span>Aswin SKP <span class="accent-text">Viewer</span></span>
+      </div>
+
+      <div class="package-links">
+        <a href="https://iamahsanmehmood.github.io/openskp/docs/" class="nav-link">Docs</a>
+        <a href="https://github.com/iamahsanmehmood/openskp" target="_blank" class="nav-link">GitHub</a>
+        <a href="https://pypi.org/project/openskp/" target="_blank" class="nav-link">PyPI</a>
+        <a href="https://www.npmjs.com/package/openskp" target="_blank" class="nav-link">npm</a>
+        <a href="https://www.nuget.org/packages/OpenSkp" target="_blank" class="nav-link">NuGet</a>
+      </div>
+      
+      <div class="actions">
+        <button id="btn-load" class="btn btn-primary">
+          <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" class="btn-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+          Upload SKP
+        </button>
+        
+        <!-- Export Multi-Format Dropdown -->
+        <div class="dropdown" id="export-dropdown">
+          <button id="btn-export" class="btn btn-secondary dropdown-toggle" disabled>
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" class="btn-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="12" y1="15" x2="12" y2="3"></line></svg>
+            Export Model
+            <svg viewBox="0 0 24 24" width="12" height="12" stroke="currentColor" stroke-width="2" fill="none" class="btn-arrow"><polyline points="6 9 12 15 18 9"></polyline></svg>
+          </button>
+          <div class="dropdown-menu" id="export-menu">
+            <button class="dropdown-item" data-format="json">
+              <span class="fmt-icon">📄</span>
+              <div class="fmt-info">
+                <span class="fmt-title">JSON Metadata (.json)</span>
+                <span class="fmt-desc">Full 3D model metadata & attribute dictionaries</span>
+              </div>
+            </button>
+            <button class="dropdown-item" data-format="ifc">
+              <span class="fmt-icon">🏛️</span>
+              <div class="fmt-info">
+                <span class="fmt-title">IFC4 BIM (.ifc)</span>
+                <span class="fmt-desc">ISO STEP BIM model with spatial hierarchy</span>
+              </div>
+            </button>
+            <button class="dropdown-item" data-format="dxf-polyface">
+              <span class="fmt-icon">📐</span>
+              <div class="fmt-info">
+                <span class="fmt-title">AutoCAD DXF — Polyface Mesh (.dxf)</span>
+                <span class="fmt-desc">R2000 Polyface Mesh (POLYLINE type 64)</span>
+              </div>
+            </button>
+            <button class="dropdown-item" data-format="dxf-3dface">
+              <span class="fmt-icon">📐</span>
+              <div class="fmt-info">
+                <span class="fmt-title">AutoCAD DXF — 3DFACE Entities (.dxf)</span>
+                <span class="fmt-desc">Legacy 3DFACE individual triangle faces</span>
+              </div>
+            </button>
+            <button class="dropdown-item" data-format="ply">
+              <span class="fmt-icon">🔷</span>
+              <div class="fmt-info">
+                <span class="fmt-title">Stanford PLY (.ply)</span>
+                <span class="fmt-desc">3D triangle mesh with colors & normals</span>
+              </div>
+            </button>
+            <button class="dropdown-item" data-format="stl">
+              <span class="fmt-icon">🔺</span>
+              <div class="fmt-info">
+                <span class="fmt-title">3D Printing STL (.stl)</span>
+                <span class="fmt-desc">ASCII / Binary 3D printing geometry</span>
+              </div>
+            </button>
+            <button class="dropdown-item" data-format="glb">
+              <span class="fmt-icon">📦</span>
+              <div class="fmt-info">
+                <span class="fmt-title">glTF 2.0 GLB (.glb)</span>
+                <span class="fmt-desc">Binary 3D model with PBR materials</span>
+              </div>
+            </button>
+            <button class="dropdown-item" data-format="obj">
+              <span class="fmt-icon">🎨</span>
+              <div class="fmt-info">
+                <span class="fmt-title">Wavefront OBJ (.obj)</span>
+                <span class="fmt-desc">3D mesh with .mtl material library</span>
+              </div>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <input type="file" id="file-input" accept=".skp" style="display: none;">
+    </header>
+
+    <!-- Sidebar Left: Layers Panel -->
+    <aside class="panel sidebar-left" id="panel-layers">
+      <div class="panel-header">
+        <h3>Layers</h3>
+        <div class="panel-header-right">
+          <span class="badge" id="layer-count">0</span>
+          <button class="panel-close" id="btn-close-layers" aria-label="Close layers panel">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+      </div>
+      <div class="panel-content scrollable">
+        <div id="layers-list-placeholder" class="empty-state">
+          No layers loaded
+        </div>
+        <ul id="layers-list" style="display: none;"></ul>
+      </div>
+    </aside>
+
+    <!-- Sidebar Right: Inspector Panel -->
+    <aside class="panel sidebar-right" id="panel-inspector">
+      <div class="panel-header">
+        <h3>Properties Inspector</h3>
+        <div class="panel-header-right">
+          <button class="panel-close" id="btn-close-inspector" aria-label="Close inspector panel">
+            <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+          </button>
+        </div>
+      </div>
+      <div class="panel-content scrollable" id="inspector-content">
+        <div id="inspector-empty-state" class="empty-state">
+          <svg viewBox="0 0 24 24" width="32" height="32" stroke="currentColor" stroke-width="1.5" fill="none" class="empty-icon"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>
+          <p>Select a component in the viewport to inspect its properties.</p>
+        </div>
+        
+        <div id="inspector-details" style="display: none;">
+          <section class="inspector-section">
+            <h4>Component Identity</h4>
+            <table class="property-table">
+              <tr><td>Name</td><td id="prop-name" class="selectable-text">--</td></tr>
+              <tr><td>Definition</td><td id="prop-definition" class="selectable-text">--</td></tr>
+              <tr><td>Layer</td><td id="prop-layer">--</td></tr>
+            </table>
+          </section>
+
+          <section class="inspector-section">
+            <h4>Coordinates (mm)</h4>
+            <div class="coordinates-grid">
+              <div><span class="coord-label">X</span><span id="prop-x" class="coord-value">0.0</span></div>
+              <div><span class="coord-label">Y</span><span id="prop-y" class="coord-value">0.0</span></div>
+              <div><span class="coord-label">Z</span><span id="prop-z" class="coord-value">0.0</span></div>
+            </div>
+          </section>
+
+          <section class="inspector-section" id="section-custom-properties">
+            <h4>Dynamic Attributes</h4>
+            <table class="property-table" id="custom-properties-table">
+              <!-- Filled dynamically -->
+            </table>
+          </section>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Bottom Status Bar -->
+    <footer class="panel status-bar">
+      <div class="status-left">
+        <span id="status-text">Ready. Drag & Drop a .skp file to begin.</span>
+      </div>
+      <div class="status-right" id="model-stats" style="visibility: hidden;">
+        <span id="stat-version" class="stat-item">Version: --</span>
+        <span id="stat-meshes" class="stat-item">Meshes: --</span>
+      </div>
+    </footer>
+
+    <!-- Mobile-only panel toggles: keeps the canvas full-screen and
+         interactive by default; Layers/Inspector open as dismissible
+         drawers instead of permanently sharing screen space. -->
+    <div class="mobile-toggles">
+      <button class="mtoggle" id="mtoggle-layers" aria-label="Toggle layers panel">
+        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>
+        Layers
+        <span class="mcount" id="mtoggle-layer-count">0</span>
+      </button>
+      <button class="mtoggle" id="mtoggle-inspector" aria-label="Toggle inspector panel">
+        <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"></circle><line x1="21" y1="21" x2="16.65" y2="16.65"></line></svg>
+        Inspect
+      </button>
+    </div>
+  </div>
+
+  <!-- Drag-and-Drop Overlay -->
+  <div id="drop-overlay">
+    <div class="drop-overlay-content">
+      <svg viewBox="0 0 24 24" width="64" height="64" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" class="drop-icon"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+      <h2>Drop your SketchUp (.skp) file</h2>
+      <p>Supports files up to SketchUp v2021/v2022 VFF format</p>
+    </div>
+  </div>
+
+  <!-- Loading Overlay -->
+  <div id="loading-overlay" class="hidden">
+    <div class="spinner-container">
+      <div class="spinner"></div>
+      <p id="loading-text">Parsing SketchUp model...</p>
+    </div>
+  </div>
+
+  <!-- Large File Warning Overlay -->
+  <div id="size-warning-overlay" class="hidden">
+    <div class="size-warning-content">
+      <svg viewBox="0 0 24 24" width="40" height="40" stroke="currentColor" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-linejoin="round" class="size-warning-icon"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>
+      <h2>Large file — this may freeze the tab</h2>
+      <p id="size-warning-message"></p>
+      <p class="size-warning-note">
+        This viewer runs entirely in your browser tab, which has a fixed
+        JavaScript memory limit (typically a few GB) that can't be raised
+        from a web page. Very large or complex models can exceed it during
+        parsing, which may freeze or crash this tab rather than showing a
+        clean error. For large files, the
+        <a href="https://github.com/iamahsanmehmood/openskp#-quick-start" target="_blank" rel="noopener">Python, .NET, or Dart packages</a>
+        don't have this limitation - or try the fast WASM preview below,
+        which loads geometry only (no layers, properties, or export).
+      </p>
+      <div class="size-warning-actions">
+        <button id="btn-size-cancel" class="btn btn-secondary">Cancel</button>
+        <button id="btn-size-proceed" class="btn btn-secondary">Load anyway (full features)</button>
+        <button id="btn-size-wasm" class="btn btn-primary">Load fast preview (WASM)</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main Application Script -->
+  <script type="module" src="viewer.js"></script>
+</body>
+</html>
+
