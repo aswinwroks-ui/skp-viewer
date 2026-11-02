@@ -1,0 +1,38 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Aswin SKP · Local large-model viewer</title>
+<style>body{margin:0;background:#11151c;color:#eee;font:15px system-ui}canvas{display:block;touch-action:none}header{position:absolute;top:12px;left:12px;right:12px;background:#171e29ed;padding:16px;border-radius:12px;z-index:2}button,select{padding:8px;margin:4px;border-radius:6px;background:#eeb44a;border:0;color:#111}p{margin:8px 0 0;color:#c3cfdf}#status{position:absolute;bottom:12px;left:12px;background:#171e29;padding:12px;max-width:90%;border-radius:8px}</style>
+<header><strong>Aswin SKP · Local large-model viewer</strong> <select id="parts" aria-label="Model part"></select><button id="prev">Previous</button><button id="next">Next</button><button id="fit">Fit model</button><p id="name">Opening prepared model…</p><p>Drag to rotate · Right-drag to pan · Scroll to zoom. One part is kept in memory at a time.</p></header><div id="status" role="status">Starting renderer…</div>
+<script type="importmap">{"imports":{"three":"https://esm.sh/three@0.180.0","three/":"https://esm.sh/three@0.180.0/","three/addons/":"https://esm.sh/three@0.180.0/examples/jsm/","@thatopen/fragments":"https://esm.sh/@thatopen/fragments@3.4.7?external=three"}}</script>
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+import {FragmentsModels} from '@thatopen/fragments';
+const status=document.querySelector('#status'), select=document.querySelector('#parts');
+const buttons=[...document.querySelectorAll('button')];
+try {
+ const response=await fetch('manifest.json'); if(!response.ok)throw Error('Prepared model manifest is missing. Start Viewer.cmd prepares it.');
+ const manifest=await response.json();
+ document.querySelector('#name').textContent=`${manifest.name} · ${(manifest.sourceBytes/1024**3).toFixed(2)} GB source · ${manifest.parts.length} parts · processed on this PC`;
+ manifest.parts.forEach((p,i)=>select.add(new Option(`Part ${i+1} (${p.items} items)`,i)));
+ const scene=new THREE.Scene(); scene.background=new THREE.Color('#11151c');
+ scene.add(new THREE.AmbientLight(0xffffff,2));const light=new THREE.DirectionalLight(0xffffff,3);light.position.set(10,20,10);scene.add(light);
+ const camera=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,.01,1e7);
+ const renderer=new THREE.WebGLRenderer({antialias:false});renderer.setPixelRatio(Math.min(devicePixelRatio,1.5));renderer.setSize(innerWidth,innerHeight);document.body.append(renderer.domElement);
+ const controls=new OrbitControls(camera,renderer.domElement);controls.enableDamping=true;
+ const engine=new FragmentsModels(await FragmentsModels.getWorker());engine.settings.autoCoordinate=false;
+ controls.addEventListener('change',()=>engine.update());
+ let current=null,busy=false,index=0;
+ function fit(){const b=manifest.bounds;if(!b)return;const c=new THREE.Vector3(...b.center),d=Math.max(...b.size,1);controls.target.copy(c);camera.position.copy(c).add(new THREE.Vector3(d,d*.7,d));camera.near=d/10000;camera.far=d*1000;camera.updateProjectionMatrix();controls.update();engine.update(true);}
+ async function load(i){if(busy||i<0||i>=manifest.parts.length)return;busy=true;select.disabled=true;buttons.forEach(b=>b.disabled=true);status.textContent=`Loading part ${i+1}…`;
+  try{if(current){scene.remove(current.object);await engine.disposeModel(current.modelId);current=null;}
+   const r=await fetch(manifest.parts[i].file);if(!r.ok)throw Error(`Part download failed (${r.status})`);
+   current=await engine.load(await r.arrayBuffer(),{modelId:`part-${i}`});current.useCamera(camera);scene.add(current.object);index=i;select.value=i;await engine.update(true);status.textContent=`Part ${i+1} of ${manifest.parts.length} · Previous part released from memory.`;
+  }catch(e){status.textContent=`Could not load this part: ${e.message}. Try another part or prepare with a smaller --batch-size.`;}
+  finally{busy=false;select.disabled=false;buttons.forEach(b=>b.disabled=false);}
+ }
+ select.onchange=()=>load(Number(select.value));document.querySelector('#prev').onclick=()=>load(index-1);document.querySelector('#next').onclick=()=>load(index+1);document.querySelector('#fit').onclick=fit;
+ addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);});
+ renderer.setAnimationLoop(()=>{controls.update();renderer.render(scene,camera);});fit();await load(0);
+}catch(e){status.textContent=`Unable to start: ${e.message}. Internet access is needed to download the rendering libraries; model data stays local.`;console.error(e);}
+</script></html>
+
+
